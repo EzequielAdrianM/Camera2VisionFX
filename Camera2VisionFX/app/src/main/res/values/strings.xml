@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Camera2VisionFX</string>
+    <string name="take_picture">PICTURE</string>
+    <string name="switch_camera">SWITCH</string>
+    <string name="record_video">VIDEO</string>
+    <string name="stop_video">STOP</string>
+</resources>
