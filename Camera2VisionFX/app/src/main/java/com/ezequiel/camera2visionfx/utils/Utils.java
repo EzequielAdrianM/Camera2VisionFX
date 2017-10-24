@@ -1,33 +1,22 @@
 package com.ezequiel.camera2visionfx.utils;
 
+/**
+ * Created by Ezequiel Adrian on 24/02/2017.
+ */
+
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Point;
-import android.graphics.PointF;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.util.DisplayMetrics;
 import android.view.Display;
 import android.view.WindowManager;
 
-import java.util.ArrayList;
-
-/**
- * Created by Ezequiel on 02/10/2017.
- */
+import com.google.android.gms.common.images.Size;
 
 public class Utils {
-    public static float getScreenRatio(Context c) {
-        DisplayMetrics metrics = c.getResources().getDisplayMetrics();
-        return ((float)metrics.heightPixels / (float)metrics.widthPixels);
-    }
 
-    public static Size[] sizeToSize(android.util.Size[] sizes) {
-        Size[] size = new Size[sizes.length];
-        for(int i=0; i<sizes.length; i++) {
-            size[i] = new Size(sizes[i].getWidth(), sizes[i].getHeight());
-        }
-        return size;
+    public static int dpToPx(int dp) {
+        return (int) (dp * Resources.getSystem().getDisplayMetrics().density);
     }
 
     public static int getScreenHeight(Context c) {
@@ -46,8 +35,21 @@ public class Utils {
         return size.x;
     }
 
+    public static float getScreenRatio(Context c) {
+        DisplayMetrics metrics = c.getResources().getDisplayMetrics();
+        return ((float)metrics.heightPixels / (float)metrics.widthPixels);
+    }
+
     public static int getScreenRotation(Context c) {
         WindowManager wm = (WindowManager) c.getSystemService(Context.WINDOW_SERVICE);
         return wm.getDefaultDisplay().getRotation();
+    }
+
+    public static Size[] sizeToSize(android.util.Size[] sizes) {
+        Size[] size = new Size[sizes.length];
+        for(int i=0; i<sizes.length; i++) {
+            size[i] = new Size(sizes[i].getWidth(), sizes[i].getHeight());
+        }
+        return size;
     }
 }

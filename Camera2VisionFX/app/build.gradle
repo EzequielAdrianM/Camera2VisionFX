@@ -5,7 +5,7 @@ android {
     buildToolsVersion "26.0.2"
     defaultConfig {
         applicationId "com.ezequiel.camera2visionfx"
-        minSdkVersion 21
+        minSdkVersion 16
         targetSdkVersion 26
         versionCode 1
         versionName "1.0"
@@ -27,19 +27,11 @@ android {
             path "CMakeLists.txt"
         }
     }
-    allprojects {
-        repositories {
-            jcenter()
-        }
-    }
 }
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:appcompat-v7:26.+'
-    compile 'com.android.support:support-annotations:26.+'
-    compile 'com.android.support:support-v13:26.+'
-    compile 'com.android.support:support-v4:26.+'
-    compile 'com.android.support:design:26.+'
+    compile 'com.google.android.gms:play-services-vision:11.0.4'
     compile 'org.wysaid:gpuimage-plus:2.4.6-min'
 }

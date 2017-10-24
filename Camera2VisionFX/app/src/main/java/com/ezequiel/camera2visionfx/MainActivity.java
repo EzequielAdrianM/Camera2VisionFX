@@ -15,15 +15,29 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.ezequiel.camera2visionfx.camera.Camera2Source;
-import com.ezequiel.camera2visionfx.camera.CameraGLSurfaceView;
+import com.ezequiel.camera2visionfx.camera.CustomCameraGLSurfaceView;
+import com.ezequiel.camera2visionfx.camera.CameraSource;
+import com.ezequiel.camera2visionfx.camera.FaceGraphic;
+import com.ezequiel.camera2visionfx.camera.GraphicOverlay;
+import com.ezequiel.camera2visionfx.utils.Utils;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.vision.MultiProcessor;
+import com.google.android.gms.vision.Tracker;
+import com.google.android.gms.vision.face.Face;
+import com.google.android.gms.vision.face.FaceDetector;
 
 import org.wysaid.nativePort.CGENativeLibrary;
 
@@ -33,34 +47,28 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = "Ezequiel Adrian Camera";
     private Context context;
     private FrameLayout rootLayout;
-    private CameraGLSurfaceView mCameraView;
+    private CustomCameraGLSurfaceView mCameraView;
+    private FaceDetector previewFaceDetector = null;
+    private GraphicOverlay mGraphicOverlay;
+    private FaceGraphic mFaceGraphic;
     private int currentEffect = 0;
     private Button btnTakePicture;
     private Button btnVideo;
     private Button btnSwitch;
+    private TextView cameraVersion;
+    private ImageView ivAutoFocus;
     private static final int REQUEST_CAMERA_PERMISSION = 200;
     private static final int REQUEST_STORAGE_PERMISSION = 201;
     public static final String EFFECT_CONFIGS[] = {
             "",
             "@curve RGB(0,255)(255,0) @style cm mapping0.jpg 80 80 8 3", // ASCII art (字符画效果)
-            "@beautify face 1 480 640", //Beautify
-            "@adjust lut edgy_amber.png",
-            "@adjust lut filmstock.png",
-            "@adjust lut foggy_night.png",
-            "@adjust lut late_sunset.png",
-            "@adjust lut soft_warming.png",
-            "@adjust lut wildbird.png",
             "#unpack @blur lerp 0.75", //can adjust blur intensity
             "@blur lerp 1", //can adjust blur mix
             "#unpack @dynamic wave 1", //can adjust speed
             "@dynamic wave 0.5",       //can adjust wave mix
-            "#unpack @style sketch 0.9",
-            "#unpack @krblend sr hehe.jpg 100 ",
-            "#unpack @krblend ol hehe.jpg 100",
-            "#unpack @krblend add hehe.jpg 100",
-            "#unpack @krblend darken hehe.jpg 100",
             "@beautify bilateral 100 3.5 2 ",
             "@style crosshatch 0.01 0.003 ",
             "@style edge 1 2 ",
@@ -79,30 +87,6 @@ public class MainActivity extends AppCompatActivity {
             "@style min",
             "@style max",
             "@style haze 0.5 -0.14 1 0.8 1 ",
-            "@curve R(0, 0)(71, 74)(164, 165)(255, 255) @pixblend screen 0.94118 0.29 0.29 1 20",//415
-            "@curve G(0, 0)(144, 166)(255, 255) @pixblend screen 0.94118 0.29 0.29 1 20",//416
-            "@curve B(0, 0)(68, 72)(149, 184)(255, 255) @pixblend screen 0.94118 0.29 0.29 1 20",//417
-            "@curve R(0, 0)(71, 74)(164, 165)(255, 255) @pixblend overlay 0.357 0.863 0.882 1 40",//418
-            "@curve R(0, 0)(96, 61)(154, 177)(255, 255) @pixblend overlay 0.357 0.863 0.882 1 40",//419
-            "@curve R(0, 0)(152, 183)(255, 255)G(0, 0)(161, 133)(255, 255) @pixblend overlay 0.357 0.863 0.882 1 40",//420
-            "@curve R(0, 0)(149, 145)(255, 255)G(0, 0)(149, 145)(255, 255)B(0, 0)(149, 145)(255, 255) @pixblend colordodge 0.937 0.482 0.835 1 20",//421
-            "@curve G(0, 0)(101, 127)(255, 255) @pixblend colordodge 0.937 0.482 0.835 1 20",//422
-            "@curve B(0, 0)(70, 87)(140, 191)(255, 255) @pixblend pinlight 0.247 0.49 0.894 1 20",//423
-            "@adjust saturation 0.7 @pixblend screen 0.8112 0.243 1 1 40",//425
-            "@adjust saturation 0.7 @pixblend screen 1 0.243 0.69 1 30",//426
-
-            "@curve R(0, 0)(71, 74)(164, 165)(255, 255) @pixblend screen 0.94118 0.29 0.29 1 20",//415
-            "@curve G(0, 0)(144, 166)(255, 255) @pixblend screen 0.94118 0.29 0.29 1 20",//416
-            "@curve B(0, 0)(68, 72)(149, 184)(255, 255) @pixblend screen 0.94118 0.29 0.29 1 20",//417
-            "@curve R(0, 0)(71, 74)(164, 165)(255, 255) @pixblend overlay 0.357 0.863 0.882 1 40",//418
-            "@curve R(0, 0)(96, 61)(154, 177)(255, 255) @pixblend overlay 0.357 0.863 0.882 1 40",//419
-            "@curve R(0, 0)(152, 183)(255, 255)G(0, 0)(161, 133)(255, 255) @pixblend overlay 0.357 0.863 0.882 1 40",//420
-            "@curve R(0, 0)(149, 145)(255, 255)G(0, 0)(149, 145)(255, 255)B(0, 0)(149, 145)(255, 255) @pixblend colordodge 0.937 0.482 0.835 1 20",//421
-            "@curve G(0, 0)(101, 127)(255, 255) @pixblend colordodge 0.937 0.482 0.835 1 20",//422
-            "@curve B(0, 0)(70, 87)(140, 191)(255, 255) @pixblend pinlight 0.247 0.49 0.894 1 20",//423
-            "@adjust saturation 0.7 @pixblend screen 0.8112 0.243 1 1 40",//425
-            "@adjust saturation 0.7 @pixblend screen 1 0.243 0.69 1 30",//426
-
             "@curve R(0, 0)(117, 95)(155, 171)(179, 225)(255, 255)G(0, 0)(94, 66)(155, 176)(255, 255)B(0, 0)(48, 59)(141, 130)(255, 224)",//5
             "@curve R(0, 0)(69, 63)(105, 138)(151, 222)(255, 255)G(0, 0)(67, 51)(135, 191)(255, 255)B(0, 0)(86, 76)(150, 212)(255, 255)",//6
             "@curve R(0, 0)(43, 77)(56, 104)(100, 166)(255, 255)G(0, 0)(35, 53)(255, 255)B(0, 0)(110, 123)(255, 212)",//7
@@ -118,7 +102,6 @@ public class MainActivity extends AppCompatActivity {
             "@adjust hsv -0.7 0.5 -0.7 -0.7 -0.7 0.5 @pixblend ol 0.07059 0.60391 0.57254 1 25",//18
             "@adjust hsv -0.7 0.5 -0.7 -0.7 0 0 @pixblend ol 0.2941 0.55292 0.06665 1 25",//19
             "@adjust hsv -0.8 0 -0.8 -0.8 0.5 -0.8 @pixblend ol 0.78036 0.70978 0.09018 1 28",//20
-
             "@adjust hsv -0.4 -0.64 -1.0 -0.4 -0.88 -0.88 @curve R(0, 0)(119, 160)(255, 255)G(0, 0)(83, 65)(163, 170)(255, 255)B(0, 0)(147, 131)(255, 255)",//22
             "@adjust hsv -0.5 -0.5 -0.5 -0.5 -0.5 -0.5 @curve R(0, 0)(129, 148)(255, 255)G(0, 0)(92, 77)(175, 189)(255, 255)B(0, 0)(163, 144)(255, 255)",//23
             "@adjust hsv 0.3 -0.5 -0.3 0 0.35 -0.2 @curve R(0, 0)(111, 163)(255, 255)G(0, 0)(72, 56)(155, 190)(255, 255)B(0, 0)(103, 70)(212, 244)(255, 255)",//24
@@ -162,16 +145,52 @@ public class MainActivity extends AppCompatActivity {
         btnTakePicture = (Button) findViewById(R.id.btn_takepicture);
         btnVideo = (Button) findViewById(R.id.btn_video);
         btnSwitch = (Button) findViewById(R.id.btn_switch);
-        requestPermissionThenOpenCamera();
+        cameraVersion = (TextView) findViewById(R.id.cameraVersion);
+        ivAutoFocus = (ImageView) findViewById(R.id.ivAutoFocus);
+
+        if(checkGooglePlayAvailability()) {
+            requestPermissionThenOpenCamera();
+        }
+    }
+
+    private boolean checkGooglePlayAvailability() {
+        GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
+        int resultCode = googleApiAvailability.isGooglePlayServicesAvailable(context);
+        if(resultCode == ConnectionResult.SUCCESS) {
+            return true;
+        } else {
+            if(googleApiAvailability.isUserResolvableError(resultCode)) {
+                googleApiAvailability.getErrorDialog(MainActivity.this, resultCode, 2404).show();
+            }
+        }
+        return false;
     }
 
     private void requestPermissionThenOpenCamera() {
         if(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-                // 1. Context
-                // 2. RootLayout to append FaceGraphic and show SnackBars.
-                mCameraView = new CameraGLSurfaceView(context);
+                previewFaceDetector = new FaceDetector.Builder(context)
+                        .setClassificationType(FaceDetector.ALL_CLASSIFICATIONS)
+                        .setLandmarkType(FaceDetector.ALL_LANDMARKS)
+                        .setMode(FaceDetector.FAST_MODE)
+                        .setProminentFaceOnly(true)
+                        .setTrackingEnabled(true)
+                        .build();
+
+                if(previewFaceDetector.isOperational()) {
+                    previewFaceDetector.setProcessor(new MultiProcessor.Builder<>(new GraphicFaceTrackerFactory()).build());
+                } else {
+                    Toast.makeText(context, "FACE DETECTION NOT AVAILABLE", Toast.LENGTH_SHORT).show();
+                }
+
+                FrameLayout.LayoutParams lParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+                mGraphicOverlay = new GraphicOverlay(context);
+                mGraphicOverlay.setLayoutParams(lParams);
+                mCameraView = new CustomCameraGLSurfaceView(context, mGraphicOverlay, previewFaceDetector);
                 rootLayout.addView(mCameraView, 0);
+                rootLayout.addView(mGraphicOverlay, 1);
+                mFaceGraphic = new FaceGraphic(mGraphicOverlay, context);
+
 
                 HorizontalScrollView menu = (HorizontalScrollView) findViewById(R.id.menu);
                 LinearLayout ll = new LinearLayout(this);
@@ -186,7 +205,13 @@ public class MainActivity extends AppCompatActivity {
                     ll.addView(btn);
                 }
                 menu.addView(ll);
+                if(mCameraView.useCamera2()) {
+                    cameraVersion.setText("Camera 2");
+                } else {
+                    cameraVersion.setText("Camera 1");
+                }
 
+                mCameraView.setOnTouchListener(CameraPreviewTouchListener);
                 btnSwitch.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
@@ -199,7 +224,11 @@ public class MainActivity extends AppCompatActivity {
                         btnSwitch.setEnabled(false);
                         btnVideo.setEnabled(false);
                         btnTakePicture.setEnabled(false);
-                        mCameraView.takePicture(camera2SourceShutterCallback, camera2SourcePictureCallback);
+                        if(mCameraView.useCamera2()) {
+                            mCameraView.takePicture(camera2SourceShutterCallback, camera2SourcePictureCallback);
+                        } else {
+                            mCameraView.takePicture(cameraSourceShutterCallback, cameraSourcePictureCallback);
+                        }
                     }
                 });
             } else {
@@ -209,6 +238,43 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
         }
     }
+
+    public GraphicOverlay getGO(){
+        return mGraphicOverlay;
+    }
+
+    final CameraSource.ShutterCallback cameraSourceShutterCallback = new CameraSource.ShutterCallback() {@Override public void onShutter() {
+        Log.d("ASD", "Shutter Callback!");}};
+    final CameraSource.PictureCallback cameraSourcePictureCallback = new CameraSource.PictureCallback() {
+        @Override
+        public void onPictureTaken(Bitmap picture) {
+            CGENativeLibrary.filterImage_MultipleEffectsWriteBack(picture, EFFECT_CONFIGS[currentEffect], 1);
+            Log.d("ASD", "Taken picture is here!");
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    btnSwitch.setEnabled(true);
+                    btnVideo.setEnabled(true);
+                    btnTakePicture.setEnabled(true);
+                }
+            });
+            FileOutputStream out = null;
+            try {
+                out = new FileOutputStream(new File(Environment.getExternalStorageDirectory(), "/camera_picture.png"));
+                picture.compress(Bitmap.CompressFormat.JPEG, 95, out);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    if (out != null) {
+                        out.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    };
 
     final Camera2Source.ShutterCallback camera2SourceShutterCallback = new Camera2Source.ShutterCallback() {
         @TargetApi(Build.VERSION_CODES.LOLLIPOP)
@@ -252,6 +318,24 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    final CameraSource.AutoFocusCallback cameraSourceAC = new CameraSource.AutoFocusCallback() {
+        @Override
+        public void onAutoFocus(boolean success) {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {ivAutoFocus.setVisibility(View.GONE);}
+            });
+        }
+    };
+
+    final Camera2Source.AutoFocusCallback camera2SourceAC = new Camera2Source.AutoFocusCallback() {
+        @Override
+        public void onAutoFocus(boolean success) {
+            runOnUiThread(new Runnable() {
+                @Override public void run() {ivAutoFocus.setVisibility(View.GONE);}
+            });
+        }
+    };
+
     public void onDestroy() {
         super.onDestroy();
     }
@@ -273,6 +357,81 @@ public class MainActivity extends AppCompatActivity {
         public void onClick(View v) {
             currentEffect = Integer.valueOf(v.getTag().toString());
             mCameraView.setFilterWithConfig(EFFECT_CONFIGS[currentEffect]);
+        }
+    };
+
+    private class GraphicFaceTrackerFactory implements MultiProcessor.Factory<Face> {
+        @Override
+        public Tracker<Face> create(Face face) {
+            return new GraphicFaceTracker(mGraphicOverlay);
+        }
+    }
+
+    private class GraphicFaceTracker extends Tracker<Face> {
+        private GraphicOverlay mOverlay;
+
+        GraphicFaceTracker(GraphicOverlay overlay) {
+            mOverlay = overlay;
+            mFaceGraphic = new FaceGraphic(overlay, context);
+        }
+
+        /**
+         * Start tracking the detected face instance within the face overlay.
+         */
+        @Override
+        public void onNewItem(int faceId, Face item) {
+            mFaceGraphic.setId(faceId);
+        }
+
+        /**
+         * Update the position/characteristics of the face within the overlay.
+         */
+        @Override
+        public void onUpdate(FaceDetector.Detections<Face> detectionResults, Face face) {
+            mOverlay.add(mFaceGraphic);
+            mFaceGraphic.updateFace(face);
+        }
+
+        /**
+         * Hide the graphic when the corresponding face was not detected.  This can happen for
+         * intermediate frames temporarily (e.g., if the face was momentarily blocked from
+         * view).
+         */
+        @Override
+        public void onMissing(FaceDetector.Detections<Face> detectionResults) {
+            mFaceGraphic.goneFace();
+            mOverlay.remove(mFaceGraphic);
+        }
+
+        /**
+         * Called when the face is assumed to be gone for good. Remove the graphic annotation from
+         * the overlay.
+         */
+        @Override
+        public void onDone() {
+            mFaceGraphic.goneFace();
+            mOverlay.remove(mFaceGraphic);
+        }
+    }
+
+    private final CustomCameraGLSurfaceView.OnTouchListener CameraPreviewTouchListener = new CustomCameraGLSurfaceView.OnTouchListener() {
+        @Override
+        public boolean onTouch(View v, MotionEvent pEvent) {
+            v.onTouchEvent(pEvent);
+            if (pEvent.getAction() == MotionEvent.ACTION_DOWN) {
+                int autoFocusX = (int) (pEvent.getX() - Utils.dpToPx(60)/2);
+                int autoFocusY = (int) (pEvent.getY() - Utils.dpToPx(60)/2);
+                ivAutoFocus.setTranslationX(autoFocusX);
+                ivAutoFocus.setTranslationY(autoFocusY);
+                ivAutoFocus.setVisibility(View.VISIBLE);
+                ivAutoFocus.bringToFront();
+                if(mCameraView.useCamera2()) {
+                    mCameraView.autoFocus(camera2SourceAC, pEvent, v);
+                } else {
+                    mCameraView.autoFocus(cameraSourceAC);
+                }
+            }
+            return false;
         }
     };
 
